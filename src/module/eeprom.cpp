@@ -1,7 +1,7 @@
 #include "eeprom.h"
 
 // Magic number to validate EEPROM data
-const uint32_t EEPROM_MAGIC = 0xDEADBEEF;
+const uint8_t EEPROM_MAGIC = 0x42;
 
 bool eeprom_init() {
     // Initialize EEPROM

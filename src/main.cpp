@@ -5,6 +5,7 @@
 #include "esp_timer.h"
 
 #include "./module/main_task.h"
+#include "./module/webserver.h"
 #include "./sensor/gps.h"
 #include "./effector/rgb_led.h"
 
@@ -15,7 +16,6 @@ void setup() {
     while (!Serial) {
         vTaskDelay(100);
     }
-    
 
     if (!eeprom_init()) {
         Serial.println("EEPROM initialization failed");
@@ -47,7 +47,7 @@ void setup() {
     xTaskCreate(
         main_task,          // Task function
         NULL,                 // Name of task
-        16384,                // Stack size in words
+        4096,                // Stack size in words
         NULL,                 // Task input parameter
         1,                    // Priority of the task
         NULL);
@@ -56,7 +56,7 @@ void setup() {
     xTaskCreate(
         gps_task,          // Task function
         NULL,                 // Name of task
-        16384,                // Stack size in words
+        4096,                // Stack size in words
         NULL,                 // Task input parameter
         1,                    // Priority of the task
         NULL);
@@ -65,11 +65,20 @@ void setup() {
     xTaskCreate(
         rgb_led_task,         // Task function
         NULL,                 // Name of task
-        16384,                // Stack size in words
+        4096,                // Stack size in words
         NULL,                 // Task input parameter
         1,                    // Priority of the task
         NULL);
-    
+/*
+    xTaskCreate(
+        webServerTask,         // Task function
+        NULL,                 // Name of task
+        8064,                // Stack size in words
+        NULL,                 // Task input parameter
+        1,                    // Priority of the task
+        NULL);
+        */
+
     vTaskDelay(200);
 }
 

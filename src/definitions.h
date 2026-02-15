@@ -11,6 +11,9 @@
 
 #define EEPROM_SIZE 512
 
+#define AP_SSID     "ESP32-GPS"
+#define AP_PASSWORD "12345678"
+
 typedef struct {
     unsigned char r;
     unsigned char g;
@@ -33,7 +36,7 @@ typedef struct {
 } gps_data_t;
 
 typedef struct {
-    uint32_t magic_number;
+    uint8_t magic_number;
     double lat;
     double lng;
     int year;

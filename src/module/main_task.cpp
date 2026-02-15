@@ -1,9 +1,55 @@
 #include "main_task.h"
 
+int distance_ring = 0;
+
+//TODO: Set these values from webserver
+double target_lat = 0;
+double target_lng = 0;
+
 void gps_topic_callback(dds_callback_context_t* context) {
     gps_data_t* data = (gps_data_t*)context->message_data.data;
-    //IMPORTANT: Check HDOP value before using GPS data, it indicates the quality of the data
-    //Serial.printf("GPS data: %f, %f, %f, %f, %f, %d, %d, %d, %d, %d, %d, %d\n", data->lat, data->lng, data->speed, data->altitude, data->hdop, data->satellites, data->year, data->month, data->day, data->hour, data->minute, data->second);
+
+    if (data-> lat != 0 && data->lng != 0) {
+        double lat_meters = (target_lat - data->lat) * 111320;
+        double lng_meters = (target_lng - data->lng) * 111320 * cos(data->lat * M_PI / 180);
+        double distance = sqrt(lat_meters * lat_meters + lng_meters * lng_meters);
+
+        double decimal = (distance / 20.0) - (int)(distance / 20.0);
+        rgb_led_data_t rgb_led_data = {
+            .r = 0,
+            .g = 0,
+            .b = 0
+        };
+
+        if (decimal >= 0.3 && decimal <= 0.7 && distance_ring < (int)(distance / 20.0)){
+            for (int i = 0; i < 3; i++) {
+                rgb_led_data.g = 255;
+                DDS_PUBLISH("/rgb_led", rgb_led_data);
+                vTaskDelay(300);
+                rgb_led_data.g = 0;
+                DDS_PUBLISH("/rgb_led", rgb_led_data);
+                vTaskDelay(300);
+            }
+
+            distance_ring = (int)(distance / 20.0);
+        }
+        else if (decimal >= 0.3 && decimal <= 0.7 && distance_ring > (int)(distance / 20.0)){
+            for (int i = 0; i < 3; i++) {
+                rgb_led_data.r = 255;
+                DDS_PUBLISH("/rgb_led", rgb_led_data);
+                vTaskDelay(300);
+                rgb_led_data.r = 0;
+                DDS_PUBLISH("/rgb_led", rgb_led_data);
+                vTaskDelay(300);
+            }
+
+            distance_ring = (int)(distance / 20.0);
+        }
+        else {
+            rgb_led_data.b = 255 - constrain(distance / 500.0, 0, 255);
+            DDS_PUBLISH("/rgb_led", rgb_led_data);
+        }
+    }
 }
 
 static dds_thread_context_t thread_context;
@@ -47,13 +93,6 @@ void main_task(void* parameter) {
             DDS_TAKE_MUTEX(&thread_context);
 
             // ------- THREAD LOOP CODE START -------
-            
-            rgb_led_data_t rgb_led_data = {
-                .r = 0,
-                .g = 0,
-                .b = 0
-            };
-            DDS_PUBLISH("/rgb_led", rgb_led_data);
 
             // ------- THREAD LOOP CODE END -------
 
