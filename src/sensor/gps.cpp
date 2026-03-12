@@ -3,21 +3,22 @@
 TinyGPSPlus gps;
 HardwareSerial gpsSerial(2);
 
+double previous_lat = 0;
+double previous_lng = 0;
+
 static dds_thread_context_t thread_context;
-static void thread_timer_callback(void* arg) { xTaskNotify(thread_context.task, THREAD_NOTIFY_BIT, eSetBits); }
+static void interrupt_gps_data_received() {
+    detachInterrupt(GPS_RX_PIN);
+    xTaskNotifyFromISR(thread_context.task, THREAD_NOTIFY_BIT, eSetBits, NULL);
+}
 void gps_task(void* parameter) {
     Serial.printf("Thread task started with handle %p\n", xTaskGetCurrentTaskHandle());
 
     thread_context.task = xTaskGetCurrentTaskHandle();
-    thread_context.queue = xQueueCreate(20, sizeof(dds_callback_context_t));
+    thread_context.queue = xQueueCreate(5, sizeof(dds_callback_context_t));
     thread_context.sync_mutex = xSemaphoreCreateMutex();
-    
-    esp_timer_create_args_t timer_args = {
-        .callback = &thread_timer_callback,
-        .arg = NULL,
-    };
-    esp_timer_create(&timer_args, &(thread_context.timer));
-    esp_timer_start_periodic(thread_context.timer, 1000 * 1000); // 1000 ms
+
+    attachInterrupt(GPS_RX_PIN, interrupt_gps_data_received, RISING); // We are using interrupt
 
     // ------- THREAD SETUP CODE START -------
 
@@ -43,11 +44,13 @@ void gps_task(void* parameter) {
 
             // ------- THREAD LOOP CODE START -------
 
-            if (gpsSerial.available() > 0) {
-                while (gpsSerial.available() > 0) {
-                    gps.encode(gpsSerial.read());
-                }
+            while (gpsSerial.available() > 0) {
+                gps.encode(gpsSerial.read());
+            }
 
+            if ((gps.location.lat() != previous_lat || gps.location.lng() != previous_lng) && gps.location.isValid() && gps.hdop.value() / 100.0 < 10.0) {
+                previous_lat = gps.location.lat();
+                previous_lng = gps.location.lng();
                 gps_data_t gps_data = {
                     .lat = gps.location.lat(),
                     .lng = gps.location.lng(),
@@ -62,8 +65,10 @@ void gps_task(void* parameter) {
                     .minute = gps.time.minute(),
                     .second = gps.time.second()
                 };
-                DDS_PUBLISH("/gps", gps_data); // IMPORTANT: Check hdop value before using GPS data, if hdop is too high, the data may be inaccurate
+                DDS_PUBLISH("/gps", gps_data);
             }
+
+            attachInterrupt(GPS_RX_PIN, interrupt_gps_data_received, RISING);
 
             // ------- THREAD LOOP CODE END -------
 

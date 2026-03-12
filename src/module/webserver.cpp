@@ -7,13 +7,46 @@ SemaphoreHandle_t gpsMutex;
 // ── Server internals ────────────────────────────────────────
 static AsyncWebServer server(80);
 static AsyncEventSource events("/events");
-static DynamicJsonDocument savedLocations(4096);
+static DynamicJsonDocument savedLocations(2048);
 static SaveLocationCallback onSaveCallback = nullptr;
 
-#define MAX_LOCATIONS 50
+void onSaveFunction(float lat, float lng) {
+  eeprom_data_t eeprom_data;
+  eeprom_data.lat = lat;
+  eeprom_data.lng = lng;
 
+  // TODO: Implement?
+  eeprom_data.year = 0;
+  eeprom_data.month = 0;
+  eeprom_data.day = 0;
+  eeprom_data.hour = 0;
+  eeprom_data.minute = 0;
+  eeprom_data.second = 0;
 
+  bool ok = eeprom_save_data(eeprom_data);
+  if (ok) {
+      Serial.println("EEPROM save success");
+  }
+  else {
+      Serial.println("EEPROM save failed");
+  }
+}
 
+#define MAX_LOCATIONS 1
+
+// DNS server for captive portal
+static DNSServer dnsServer;
+
+// Add this function to handle captive portal
+void setupCaptivePortal() {
+    // Redirect all DNS requests to the ESP32's IP
+    dnsServer.start(53, "*", WiFi.softAPIP());
+    
+    // Add a handler for any HTTP request to redirect to your page
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        request->redirect("/");
+    });
+}
 
 // ── Inline HTML page ────────────────────────────────────────
 static const char INDEX_HTML[] PROGMEM = R"rawliteral(
@@ -58,7 +91,6 @@ h1{text-align:center;font-size:1.4rem;margin-bottom:20px;color:#00d2ff}
   </div>
   <div id="saved-list"></div>
   <button class="btn btn-save" id="btn-save" disabled onclick="saveLocation()">Save Location</button>
-  <button class="btn btn-clear" onclick="clearSaved()">Clear Saved</button>
 </div>
 <script>
 var lat=0,lng=0,sat=0,fix=false;
@@ -90,9 +122,6 @@ function saveLocation(){
   fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:lat,lng:lng})})
   .then(function(r){return r.json();}).then(function(d){if(d.ok)loadSaved();});
 }
-function clearSaved(){
-  fetch('/locations',{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(d.ok)loadSaved();});
-}
 function loadSaved(){
   fetch('/locations').then(function(r){return r.json();}).then(function(arr){
     var el=document.getElementById('saved-list');el.innerHTML='';
@@ -123,6 +152,10 @@ void webServerInit(const char *ssid, const char *password) {
   WiFi.softAP(ssid, password);
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
+
+  setupCaptivePortal();
+
+  onSaveCallback = onSaveFunction;
 
   // Serve inline HTML
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -206,7 +239,7 @@ static dds_thread_context_t thread_context;
 static void thread_timer_callback(void* arg) { xTaskNotify(thread_context.task, THREAD_NOTIFY_BIT, eSetBits); }
 void webServerTask(void* parameter) {
     thread_context.task = xTaskGetCurrentTaskHandle();
-    thread_context.queue = xQueueCreate(20, sizeof(dds_callback_context_t));
+    thread_context.queue = xQueueCreate(5, sizeof(dds_callback_context_t));
     thread_context.sync_mutex = xSemaphoreCreateMutex();
     
     esp_timer_create_args_t timer_args = {
@@ -217,7 +250,7 @@ void webServerTask(void* parameter) {
     esp_timer_start_periodic(thread_context.timer, 10000); // 10 ms
 
     // ------- THREAD SETUP CODE START -------
-    webServerInit(AP_SSID, AP_PASSWORD);
+    webServerInit(AP_SSID, NULL);
     dds_result_t result = DDS_SUBSCRIBE("/gps", gps_webserver_topic_callback, &thread_context);
     if (result != DDS_SUCCESS) {
         Serial.printf("Topic subscribe failed: %s\n", DDS_RESULT_TO_STRING(result));
@@ -254,6 +287,9 @@ void webServerTask(void* parameter) {
 
               events.send(json, "gps", millis());
             }
+
+            dnsServer.processNextRequest();
+            
             // ------- THREAD LOOP CODE END -------
 
             DDS_PROCESS_THREAD_MESSAGES(&thread_context);

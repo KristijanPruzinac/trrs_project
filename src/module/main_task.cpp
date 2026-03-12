@@ -1,54 +1,44 @@
 #include "main_task.h"
 
-int distance_ring = 0;
-
-//TODO: Set these values from webserver
-double target_lat = 0;
-double target_lng = 0;
+int current_gps_ring = -1;
 
 void gps_topic_callback(dds_callback_context_t* context) {
     gps_data_t* data = (gps_data_t*)context->message_data.data;
 
-    if (data-> lat != 0 && data->lng != 0) {
-        double lat_meters = (target_lat - data->lat) * 111320;
-        double lng_meters = (target_lng - data->lng) * 111320 * cos(data->lat * M_PI / 180);
-        double distance = sqrt(lat_meters * lat_meters + lng_meters * lng_meters);
+    double distance = haversine_dist(data->lat, data->lng, target_lat, target_lng) * 1000.0;
 
-        double decimal = (distance / 20.0) - (int)(distance / 20.0);
-        rgb_led_data_t rgb_led_data = {
-            .r = 0,
-            .g = 0,
-            .b = 0
-        };
+    //Serial.printf("%f, %f, %f\n", data->lat, data->lng, distance);
 
-        if (decimal >= 0.3 && decimal <= 0.7 && distance_ring < (int)(distance / 20.0)){
-            for (int i = 0; i < 3; i++) {
-                rgb_led_data.g = 255;
-                DDS_PUBLISH("/rgb_led", rgb_led_data);
-                vTaskDelay(300);
-                rgb_led_data.g = 0;
-                DDS_PUBLISH("/rgb_led", rgb_led_data);
-                vTaskDelay(300);
-            }
+    int ring = (int)(distance / GPS_RING_WIDTH);
+    if (current_gps_ring == -1) {
+        current_gps_ring = ring;
+        rgb_led_command_t cmd = {RGB_SIGNAL_GPS_FIX, 255};
+        DDS_PUBLISH("/rgb_led", cmd);
+        return;
+    }
 
-            distance_ring = (int)(distance / 20.0);
-        }
-        else if (decimal >= 0.3 && decimal <= 0.7 && distance_ring > (int)(distance / 20.0)){
-            for (int i = 0; i < 3; i++) {
-                rgb_led_data.r = 255;
-                DDS_PUBLISH("/rgb_led", rgb_led_data);
-                vTaskDelay(300);
-                rgb_led_data.r = 0;
-                DDS_PUBLISH("/rgb_led", rgb_led_data);
-                vTaskDelay(300);
-            }
-
-            distance_ring = (int)(distance / 20.0);
+    if (ring != current_gps_ring && ring % 2 == 0) {
+        if (ring < current_gps_ring) {
+            rgb_led_command_t cmd = {RGB_SIGNAL_CLOSER, 255};
+            DDS_PUBLISH("/rgb_led", cmd);
+            //Serial.printf("Moved closer %d\n", ring);
         }
         else {
-            rgb_led_data.b = 255 - constrain(distance / 500.0, 0, 255);
-            DDS_PUBLISH("/rgb_led", rgb_led_data);
+            rgb_led_command_t cmd = {RGB_SIGNAL_FURTHER, 255};
+            DDS_PUBLISH("/rgb_led", cmd);
+            //Serial.printf("Moved further %d\n", ring);
         }
+
+        current_gps_ring = ring;
+    }
+    else if (ring == 0) {
+        rgb_led_command_t cmd = {RGB_SIGNAL_CONSTANT_RGB, 255 - constrain((int) (distance / GPS_RING_WIDTH * 255.0), 0, 255)};
+        DDS_PUBLISH("/rgb_led", cmd);
+        //Serial.println("GPS fix");
+    }
+    else {
+        rgb_led_command_t cmd = {RGB_SIGNAL_CONSTANT_BLUE, 255 - constrain((int) (distance / 1000.0 * 255.0), 0, 255)};
+        DDS_PUBLISH("/rgb_led", cmd);
     }
 }
 
@@ -58,7 +48,7 @@ void main_task(void* parameter) {
     Serial.printf("Thread task started with handle %p\n", xTaskGetCurrentTaskHandle());
 
     thread_context.task = xTaskGetCurrentTaskHandle();
-    thread_context.queue = xQueueCreate(20, sizeof(dds_callback_context_t));
+    thread_context.queue = xQueueCreate(5, sizeof(dds_callback_context_t));
     thread_context.sync_mutex = xSemaphoreCreateMutex();
     
     esp_timer_create_args_t timer_args = {

@@ -1,6 +1,8 @@
 #ifndef DEFINITIONS
 #define DEFINITIONS
 
+#include <Arduino.h>
+
 #define GPS_BAUD 9600
 #define GPS_RX_PIN 16
 #define GPS_TX_PIN 17
@@ -11,14 +13,24 @@
 
 #define EEPROM_SIZE 512
 
-#define AP_SSID     "ESP32-GPS"
+#define AP_SSID     "ESP32-TREASURE-HUNT"
 #define AP_PASSWORD "12345678"
 
+#define GPS_RING_WIDTH 10
+
+typedef enum {
+    RGB_SIGNAL_NONE = 0,
+    RGB_SIGNAL_GPS_FIX,        // Rainbow pattern
+    RGB_SIGNAL_CONSTANT_BLUE,  // Solid blue with brightness
+    RGB_SIGNAL_CONSTANT_RGB,  // Solid blue with brightness
+    RGB_SIGNAL_CLOSER,         // Green fade blink
+    RGB_SIGNAL_FURTHER         // Red fade blink
+} rgb_signal_t;
+
 typedef struct {
-    unsigned char r;
-    unsigned char g;
-    unsigned char b;
-} rgb_led_data_t;
+    rgb_signal_t signal;
+    uint8_t brightness;
+} rgb_led_command_t;
 
 typedef struct {
     double lat;
@@ -46,5 +58,10 @@ typedef struct {
     int minute;
     int second;
 } eeprom_data_t;
+
+//Haversine formula for distance calculation
+#define R 6371
+#define TO_RAD (3.1415926536 / 180)
+double haversine_dist(double th1, double ph1, double th2, double ph2);
 
 #endif

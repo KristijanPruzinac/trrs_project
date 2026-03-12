@@ -1,4 +1,5 @@
 #include <Arduino.h>
+
 #include "./module/eeprom.h"
 
 #include "esp_dds.h"
@@ -8,6 +9,11 @@
 #include "./module/webserver.h"
 #include "./sensor/gps.h"
 #include "./effector/rgb_led.h"
+
+//#include "./test.h"
+
+double target_lat = 0;
+double target_lng = 0;
 
 void setup() {
 
@@ -39,6 +45,13 @@ void setup() {
             Serial.println("EEPROM initialization failed");
         }
     }
+    else {
+        Serial.println("EEPROM initialization success");
+        Serial.printf("EEPROM data: lat=%f, lng=%f\n", eeprom_data.lat, eeprom_data.lng);
+
+        target_lat = eeprom_data.lat;
+        target_lng = eeprom_data.lng;
+    }
     
     // Initialize DDS system
     DDS_INIT();
@@ -69,11 +82,21 @@ void setup() {
         NULL,                 // Task input parameter
         1,                    // Priority of the task
         NULL);
-/*
+
     xTaskCreate(
         webServerTask,         // Task function
         NULL,                 // Name of task
-        8064,                // Stack size in words
+        4096,                // Stack size in words
+        NULL,                 // Task input parameter
+        1,                    // Priority of the task
+        NULL);
+
+    //Test
+    /*
+    xTaskCreate(
+        thread_task,         // Task function
+        NULL,                 // Name of task
+        4096,                // Stack size in words
         NULL,                 // Task input parameter
         1,                    // Priority of the task
         NULL);

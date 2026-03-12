@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
+#include "eeprom.h"
 
 #include <WiFi.h>
 #include <ArduinoJson.h>

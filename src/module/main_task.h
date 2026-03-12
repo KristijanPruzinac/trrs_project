@@ -10,4 +10,7 @@
 
 void main_task(void* parameter);
 
+extern double target_lat;
+extern double target_lng;
+
 #endif // MAIN_TASK_H
