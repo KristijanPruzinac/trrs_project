@@ -4,5 +4,3 @@
 .vscode/launch.json
 .vscode/ipch
 sensitive.h
-test.cpp
-test.h
