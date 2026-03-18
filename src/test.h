@@ -8,7 +8,4 @@
 
 void thread_task(void* parameter);
 
-extern double target_lat;
-extern double target_lng;
-
 #endif

@@ -14,6 +14,9 @@ void gps_topic_callback(dds_callback_context_t* context) {
         current_gps_ring = ring;
         rgb_led_command_t cmd = {RGB_SIGNAL_GPS_FIX, 255};
         DDS_PUBLISH("/rgb_led", cmd);
+
+        buzzer_command_t b_cmd = {BUZZER_SIGNAL_START, 255};
+        DDS_PUBLISH("/buzzer", b_cmd);
         return;
     }
 
@@ -21,12 +24,16 @@ void gps_topic_callback(dds_callback_context_t* context) {
         if (ring < current_gps_ring) {
             rgb_led_command_t cmd = {RGB_SIGNAL_CLOSER, 255};
             DDS_PUBLISH("/rgb_led", cmd);
-            //Serial.printf("Moved closer %d\n", ring);
+
+            buzzer_command_t b_cmd = {BUZZER_SIGNAL_CLOSER, 255};
+            DDS_PUBLISH("/buzzer", b_cmd);
         }
         else {
             rgb_led_command_t cmd = {RGB_SIGNAL_FURTHER, 255};
             DDS_PUBLISH("/rgb_led", cmd);
-            //Serial.printf("Moved further %d\n", ring);
+
+            buzzer_command_t b_cmd = {BUZZER_SIGNAL_FURTHER, 255};
+            DDS_PUBLISH("/buzzer", b_cmd);
         }
 
         current_gps_ring = ring;
@@ -34,7 +41,9 @@ void gps_topic_callback(dds_callback_context_t* context) {
     else if (ring == 0) {
         rgb_led_command_t cmd = {RGB_SIGNAL_CONSTANT_RGB, 255 - constrain((int) (distance / GPS_RING_WIDTH * 255.0), 0, 255)};
         DDS_PUBLISH("/rgb_led", cmd);
-        //Serial.println("GPS fix");
+
+        buzzer_command_t b_cmd = {BUZZER_SIGNAL_NEARBY, 255 - constrain((int) (distance / GPS_RING_WIDTH * 255.0), 0, 255)};
+        DDS_PUBLISH("/buzzer", b_cmd);
     }
     else {
         rgb_led_command_t cmd = {RGB_SIGNAL_CONSTANT_BLUE, 255 - constrain((int) (distance / 1000.0 * 255.0), 0, 255)};

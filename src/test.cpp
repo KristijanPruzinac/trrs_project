@@ -1,5 +1,8 @@
 #include "test.h"
 
+double target_lat = 10;
+double target_lng = 10;
+
 static int inc[] = {4, 4, 4, 3, 3, 2, 2, 1, 3, 0, 1, 2, 3, 4, 5, 6, 7, 6};
 static int inc_index = 0;
 
@@ -65,6 +68,8 @@ void thread_task(void* parameter) {
                 
                 inc_index++;
                 DDS_PUBLISH("/gps", gps_data);
+
+                Serial.println(inc_value);
             }
 
             // ------- THREAD LOOP CODE END -------

@@ -118,10 +118,9 @@ static void update_led_animation(void) {
             break;
     }
     
-    // Apply to LEDs (with your 255-x logic)
-    analogWrite(RGB_LED_RED_PIN, 255 - r);
-    analogWrite(RGB_LED_GREEN_PIN, 255 - g);
-    analogWrite(RGB_LED_BLUE_PIN, 255 - b);
+    analogWrite(RGB_LED_RED_PIN, r);
+    analogWrite(RGB_LED_GREEN_PIN, g);
+    analogWrite(RGB_LED_BLUE_PIN, b);
     
     // Increment step and check if animation is done
     animation_step++;

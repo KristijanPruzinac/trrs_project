@@ -4,19 +4,21 @@
 #include <Arduino.h>
 
 #define GPS_BAUD 9600
-#define GPS_RX_PIN 16
-#define GPS_TX_PIN 17
+#define GPS_RX_PIN 18
+#define GPS_TX_PIN 19
 
 #define RGB_LED_RED_PIN 25
 #define RGB_LED_GREEN_PIN 26
 #define RGB_LED_BLUE_PIN 27
+
+#define BUZZER_PIN 23
 
 #define EEPROM_SIZE 512
 
 #define AP_SSID     "ESP32-TREASURE-HUNT"
 #define AP_PASSWORD "12345678"
 
-#define GPS_RING_WIDTH 10
+#define GPS_RING_WIDTH 5
 
 typedef enum {
     RGB_SIGNAL_NONE = 0,
@@ -31,6 +33,19 @@ typedef struct {
     rgb_signal_t signal;
     uint8_t brightness;
 } rgb_led_command_t;
+
+typedef enum {
+    BUZZER_SIGNAL_NONE = 0,
+    BUZZER_SIGNAL_START,
+    BUZZER_SIGNAL_NEARBY,
+    BUZZER_SIGNAL_CLOSER,
+    BUZZER_SIGNAL_FURTHER
+} buzzer_signal_t;
+
+typedef struct {
+    buzzer_signal_t signal;
+    uint8_t loudness;
+} buzzer_command_t;
 
 typedef struct {
     double lat;

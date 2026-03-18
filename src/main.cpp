@@ -9,15 +9,16 @@
 #include "./module/webserver.h"
 #include "./sensor/gps.h"
 #include "./effector/rgb_led.h"
+#include "./effector/buzzer_task.h"
 
 //#include "./test.h"
-
-double target_lat = 0;
-double target_lng = 0;
 
 void setup() {
 
     Serial.begin(115200);
+
+    pinMode(BUZZER_PIN, OUTPUT);
+    digitalWrite(BUZZER_PIN, LOW);
 
     while (!Serial) {
         vTaskDelay(100);
@@ -84,6 +85,14 @@ void setup() {
         NULL);
 
     xTaskCreate(
+        buzzer_task,         // Task function
+        NULL,                 // Name of task
+        4096,                // Stack size in words
+        NULL,                 // Task input parameter
+        1,                    // Priority of the task
+        NULL);
+
+    xTaskCreate(
         webServerTask,         // Task function
         NULL,                 // Name of task
         4096,                // Stack size in words
@@ -101,6 +110,7 @@ void setup() {
         1,                    // Priority of the task
         NULL);
         */
+        
 
     vTaskDelay(200);
 }
